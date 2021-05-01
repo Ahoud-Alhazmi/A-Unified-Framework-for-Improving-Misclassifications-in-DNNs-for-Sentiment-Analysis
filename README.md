@@ -23,6 +23,6 @@ You need Python 3, and all system dependencies possibly required by (Keras , NLT
 DNN Model
 --------------------------------------------------------
 1.  BiLSTM: Bidirectional Long Short-Term Memory  
-2.  CNN-LSTM: combining Convolutional Neural Network and Long Short- Term Memory 
+2.  CNN-LSTM: combining Convolutional Neural Network and Long Short Term Memory 
 
 

@@ -1,0 +1,95 @@
+#  1.  Loading data ( Trandata ( we need only the text review in sentiment analysis case ). Testdata is the misclassification samples. There are three type of misclassification you can find it in the paper. Note, in Testdata ( we need the text review and the true label) . 
+
+# 2.  Loading DNN model
+from keras.models import load_model
+model = load_model(#name model)
+
+#3.  Extracting the weight of  before softamx layer
+
+from keras import backend as K 
+WegithofPenultimatelayer = K.function([model.layers[0].input],
+                                   [model.layers[n].output]).   # n is the number of last layer. . 5 is for CNNLSTM and 6 is for BiLSTM 
+
+
+Wegitoftraningdata = WegithofPenultimatelayer([Traningdata])[0]
+print (Wegitoftraningdata.shape)
+
+
+WegitoftMistestdata = WegithofPenultimatelayer([Testdata])[0]
+print (WegitoftMistestdata)
+
+
+
+# 4. Reduceing dimension of weights of DNN vector before DPGMM sampling using t-SNE 
+from sklearn.manifold import TSNE
+tsne = TSNE(n_components=2, verbose=1, perplexity=40, n_iter=1000)
+tsne_WeighDNNTraning = tsne.fit_transform(Wegitoftraningdata)
+plt.scatter(tsne_WeighDNNTraning[:, 0], tsne_WeighDNNTraning[:,1],c=labelsDNN ,s=0.5 ,  cmap='viridis' ) 
+
+tsne_WeighDNNTest = tsne.fit_transform(WegitoftMistestdata)
+
+
+
+# 5. Estimator:  which estimates the parameters of the training data under Dirichlet Process Gaussian Mixture Model (DPGMM) 
+
+from sklearn.mixture import BayesianGaussianMixture
+dpgmm = BayesianGaussianMixture(n_components=2, covariance_type='full').fit(tsne_WeighDNNTraning) 
+print(dpgmm)
+
+prediction_dpgmm = dpgmm.predict(tsne_WeighDNNTraning)
+print(prediction_dpgmm)
+
+probsbabiltyDPGMM = dpgmm.predict_proba(tsne_WeighDNNTraning)
+print(probsbabiltyDPGMM)
+
+print("DPGMM weights: ", dpgmm.weights_)
+print("DPGMM means: ", dpgmm.means_)
+print("DPGMM Covariance: ", dpgmm.covariances_)
+plt.scatter(tsne_WeighDNNTraning[:, 0], tsne_WeighDNNTraning[:,1],c=prediction_dpgmm ,s=0.5 ,  cmap='viridis' ) 
+
+
+DPGMM_mean=  dpgmm.means_
+DPGMM_Covariance= dpgmm.covariances_
+
+
+
+
+#6. Classifier: that classifies a test sample with respect to the closest class distribution using Euclidean distance where its parameters are selected as class mean of training data 
+
+from scipy.spatial import distance
+import scipy
+
+npMEANS =  np.array( DPGMM_mean)
+npSIGMAS =  np.array(DPGMM_Covariance)
+ EucideOriginaltestdatdd = [[0 for _ in range(npMEANS.shape[0])]
+                             for _ in range(len(TrueLabels))] 
+
+
+    for isample in range(len(TrueLabel)):
+        for icluster in range(npMEANS.shape[0]):
+            EucideOriginaltestdatdd[isample][icluster] = distance.euclidean(tsne_WeighDNNTest[isample],npMEANS[icluster]) 
+
+        
+    EucideOriginaltestdatdd = np.array(EucideOriginaltestdatdd)
+    pred = EucideOriginaltestdatdd.argmin(axis=1)
+    plt.figure(figsize=(5,5))
+    plt.scatter(tsne_WeighDNNTest[:,0], tsne_WeighDNNTest[:,1],c= pred , s=0.5 ,  cmap='viridis' )
+    plt.title(“DPGMM with Euclidean” , acc={:3.3f}".format(np.mean(TrueLabel == pred)))
+    plt.show()
+
+    
+    score = []
+    for k in EucideOriginaltestdatdd:
+        score.append(max(k))
+    
+    from sklearn.metrics import roc_auc_score
+    from sklearn.metrics import precision_recall_fscore_support
+    auc = roc_auc_score(TrueLabel,score)
+    print('AUC: %.3f' % auc)
+  
+    result= precision_recall_fscore_support(TrueLabels, pred, average='micro')
+    print(result)
+    result = precision_recall_fscore_support(TrueLabels, pred, average='macro')
+    print(result)
+    result = precision_recall_fscore_support(TrueLabels, pred, average='binary')
+    print(result)

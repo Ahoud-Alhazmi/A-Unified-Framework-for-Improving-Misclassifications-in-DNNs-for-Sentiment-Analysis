@@ -31,7 +31,7 @@ tsne_WeighDNNTest = tsne.fit_transform(WegitoftMistestdata)
 
 
 
-# 5. Estimator:  which estimates the parameters of the training data under Dirichlet Process Gaussian Mixture Model (DPGMM) 
+# 5. Estimator:  which estimates the parameters of the training data under Gaussian Mixture Model (GMM)
 
 from sklearn.mixture import GaussianMixture
 gmm = GaussianMixture(n_components=2, covariance_type='full').fit(tsne_WeighDNNTraning) 
